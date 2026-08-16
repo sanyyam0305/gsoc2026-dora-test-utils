@@ -53,6 +53,7 @@ or configuration changes.
 | `trajectory-mutated.yml` | **Mutated** — run in Steps 3-4 (`--steps 5`) |
 | `trajectory-targets.json` | The two target configurations fed by test-source |
 | `sink_trajectory.json` | Recorded trajectory (generated at runtime, git-ignored) |
+| `trajectory-baseline.json` | **The committed baseline** — the demo records it here (repo-relative paths, 140 values) and CI replays against it; re-recording refreshes the timestamp metadata |
 | `rust-dataflow.yml` / `rust-dataflow-mutated.yml` | **Bonus example** — the same Record/Replay pattern on DORA's official rust-dataflow example (unmodified upstream nodes); see the notes in those files |
 
 Relative paths in the YAMLs resolve against this directory (dora

@@ -13,10 +13,6 @@ type DataId = dora_node_api::dora_core::config::DataId;
 /// Delay before emitting, letting downstream nodes install their input
 /// subscriptions (messages sent in the registration window are dropped).
 const SUBSCRIBER_SETTLE_DELAY: std::time::Duration = std::time::Duration::from_millis(500);
-/// Linger after emitting so the daemon delivers every queued message
-/// before this process exits and closes the input stream.
-const EXIT_LINGER: std::time::Duration = std::time::Duration::from_secs(2);
-
 /// True when running in standalone mode (no daemon): the test-source
 /// feeds a DoraNode directly via DORA_TEST_WITH_INPUTS, so there is no
 /// daemon to race against and the delivery delays can be skipped.
@@ -64,7 +60,7 @@ pub fn run_test_source(config: SourceConfig) -> Result<()> {
         validate_spec(spec)?;
     }
 
-    let (mut node, _events) =
+    let (mut node, mut events) =
         DoraNode::init_from_env().context("failed to initialize DORA node")?;
 
     // Let downstream subscribers install their input subscriptions
@@ -81,14 +77,19 @@ pub fn run_test_source(config: SourceConfig) -> Result<()> {
             .with_context(|| format!("failed to emit output '{}'", spec.output_id))?;
     }
 
-    // Linger briefly so the daemon can deliver every queued message.
-    // Exiting right after send_output closes the input stream while
-    // messages are still in flight, and the daemon drops them
-    // nondeterministically — observed at ~7+ emitted values (the
-    // trajectory demo sends 14).  A fixed linger keeps the dataflow
-    // teardown fast (no need to wait for --stop-after).
+    // Stay alive until the dataflow stops instead of exiting after a
+    // fixed linger.  Exiting closes the input stream while messages are
+    // still in flight, and the daemon drops them — a 2 s fixed linger
+    // still lost 5 of 10 messages on CI (PR #45).  The daemon sends
+    // Stop at --stop-after, so the process lives exactly as long as
+    // the dataflow runs; in standalone mode there is no daemon to race.
     if !standalone_mode() {
-        std::thread::sleep(EXIT_LINGER);
+        while let Some(event) = events.recv() {
+            match event {
+                dora_node_api::Event::Stop(_) | dora_node_api::Event::InputClosed { .. } => break,
+                _ => {}
+            }
+        }
     }
 
     Ok(())

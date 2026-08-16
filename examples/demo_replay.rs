@@ -30,6 +30,10 @@ use std::time::Duration;
 // verifies the checkout is pinned at the expected commit before
 // running this demo.
 
+const RED: &str = "\x1b[0;31m";
+const BOLD: &str = "\x1b[1m";
+const NC: &str = "\x1b[0m";
+
 fn section(title: &str) {
     println!("\n═══ {} ═══\n", title);
 }
@@ -39,21 +43,26 @@ fn step(msg: &str) {
 fn ok(msg: &str) {
     println!("  ✅ {msg}");
 }
+/// Print a detected regression in red — this is the error signal.
+fn err(msg: &str) {
+    println!("  {RED}{BOLD}❌ {msg}{NC}");
+}
 fn fail(msg: &str) -> ! {
-    eprintln!("  ❌ {msg}");
+    eprintln!("  {RED}❌ {msg}{NC}");
     std::process::exit(1);
 }
 
-/// Print the diff report, truncated for readability in the demo.
+/// Print the diff report in red (it IS the error), truncated for
+/// readability in the demo.
 fn print_diff_trimmed(diff: &dora_test_utils::DiffReport, max_lines: usize) {
     let text = diff.to_string();
     let lines: Vec<&str> = text.lines().collect();
     let shown = lines.len().min(max_lines);
     for line in &lines[..shown] {
-        println!("    {line}");
+        println!("    {RED}{line}{NC}");
     }
     if lines.len() > max_lines {
-        println!("    … ({} more lines)", lines.len() - max_lines);
+        println!("    {RED}… ({} more lines){NC}", lines.len() - max_lines);
     }
 }
 
@@ -68,10 +77,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ok("prerequisites: dora CLI resolved by RecordSession/ReplaySession");
 
     // ── Setup ──────────────────────────────────────────
-    let tmp = tempfile::TempDir::new()?;
-    #[allow(deprecated)]
-    let tmp_path = tmp.into_path();
-    let baseline_path = tmp_path.join("baseline.json");
+    // The baseline lives IN THE PROJECT and is committed to the repo —
+    // the real regression workflow records once, commits the baseline,
+    // and CI replays against the committed copy.  The trajectory output
+    // is deterministic, so re-recording produces identical content and
+    // the committed file never churns.
+    let baseline_path = PathBuf::from("demo/trajectory-baseline.json");
 
     // Static dataflow files. dora resolves their relative paths against
     // the YAML file's own directory, so no generation is needed.
@@ -93,8 +104,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_timeout(Duration::from_secs(10))
         .run()?;
 
+    // Normalize machine-specific metadata before committing the
+    // baseline: the dataflow path is stored repo-relative so the
+    // committed file works from any checkout location.
+    let mut recording = recording;
+    recording.metadata.dataflow_yaml = "demo/trajectory-baseline.yml".into();
     recording.save(&baseline_path)?;
-    ok(&format!("baseline saved → {}", baseline_path.display()));
+    ok(&format!(
+        "baseline saved → {} (committed to the repo — CI replays against it)",
+        baseline_path.display()
+    ));
 
     // Show recorded data sample
     println!();
@@ -129,6 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     step("ignore_paths / ignore_sink to skip non-deterministic fields.");
     let result = ReplaySession::load(&baseline_path)?
         .replay_sink("test-sink", &sink_output)
+        .dataflow(&baseline_yaml)
         .with_timeout(Duration::from_secs(10))
         .run()?;
 
@@ -160,9 +180,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if clean {
         fail("BUG: is_clean() = true — regression was NOT detected!");
     }
-    ok(&format!("is_clean() = {}  ← regression detected", clean));
+    err(&format!("is_clean() = {clean}  ← REGRESSION DETECTED"));
 
-    // Print the structured diff (trimmed for readability)
+    // Print the structured diff in red (trimmed for readability).
     step("DiffReport:");
     print_diff_trimmed(result.diff(), 14);
 
@@ -172,7 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         result.assert_no_regression();
     }));
     match panic_result {
-        Err(_) => ok("assert_no_regression() panicked — correct"),
+        Err(_) => ok("assert_no_regression() panicked — correct (CI would go red)"),
         Ok(()) => fail("BUG: assert_no_regression() did NOT panic on regression!"),
     }
 

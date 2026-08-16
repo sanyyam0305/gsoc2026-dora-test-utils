@@ -142,7 +142,7 @@ run_pipeline_expect_mismatch() {
     fi
 
     if [ -f "$result_file" ] && grep -q '"match": false' "$result_file"; then
-        ok "$result_file — MISMATCH as expected: the misconfiguration was caught"
+        echo -e "  ${RED}${BOLD}❌ $result_file — MISMATCH as expected: the misconfiguration was caught${NC}"
         echo "    differences (excerpt):"
         grep -o '"message": "[^"]*"' "$result_file" | head -3 | sed 's/^/      /'
     else

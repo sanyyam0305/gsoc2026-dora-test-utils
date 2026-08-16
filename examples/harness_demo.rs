@@ -77,6 +77,10 @@ fn step(msg: &str) {
 fn ok(msg: &str) {
     println!("  ✅ {msg}");
 }
+/// Print an error signal in red.
+fn err(msg: &str) {
+    println!("  \x1b[0;31m\x1b[1m❌ {msg}\x1b[0m");
+}
 fn fail(msg: impl std::fmt::Display) -> ! {
     eprintln!("  ❌ {msg}");
     std::process::exit(1);
@@ -240,7 +244,7 @@ fn main() {
                 .downcast_ref::<String>()
                 .cloned()
                 .unwrap_or_else(|| "(non-string panic message)".to_string());
-            println!("    ❌ test failed: {msg}");
+            err(&format!("test failed: {msg}"));
             ok("the bug was caught by the test — this is what tests are for");
         }
         Ok(()) => fail("the buggy logic PASSED — the test would NOT have caught it"),

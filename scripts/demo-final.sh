@@ -169,16 +169,16 @@ cargo test --test e2e -- --test-threads=1
 banner "7. Record/Replay e2e tests (17)"
 
 step "Running e2e_record tests (4)..."
-timeout 240 cargo test --test e2e_record -- --test-threads=1
+timeout 300 cargo test --test e2e_record -- --test-threads=1
 
 step "Running e2e_replay tests (13)..."
-timeout 240 cargo test --test e2e_replay -- --test-threads=1
+timeout 300 cargo test --test e2e_replay -- --test-threads=1
 
 # ─── 8. Integration tests ───────────────────────────────
 banner "8. Integration tests (6)"
 
 step "Running cargo test --test integration (dora run pipelines)..."
-timeout 240 cargo test --test integration -- --test-threads=1
+timeout 300 cargo test --test integration -- --test-threads=1
 
 # ─── 9. Smoke tests ─────────────────────────────────────
 banner "9. Smoke tests (3)"

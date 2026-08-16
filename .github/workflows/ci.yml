@@ -89,6 +89,8 @@ jobs:
       - run: cargo test --test integration -- --test-threads=1
       # Record/replay e2e tests (need dora CLI + test binaries built above).
       # Each test performs one or more `dora run --stop-after 10s` calls;
-      # 240s gives ~2x headroom over the measured ~40s suite.
-      - run: timeout 240 cargo test --test e2e_record -- --test-threads=1
-      - run: timeout 240 cargo test --test e2e_replay -- --test-threads=1
+      # test-source now stays alive until Stop (delivery guarantee), so
+      # every run takes the full stop-after — 300s covers the ~150-250s
+      # suites on CI runners.
+      - run: timeout 300 cargo test --test e2e_record -- --test-threads=1
+      - run: timeout 300 cargo test --test e2e_replay -- --test-threads=1
