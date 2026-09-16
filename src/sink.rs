@@ -66,8 +66,8 @@ pub fn run_test_sink(config: SinkConfig) -> eyre::Result<SinkResult> {
     while let Some(event) = events.recv() {
         match event {
             Event::Input { data, .. } => {
-                // ArrowData.0 is an ArrayRef (Arc<dyn Array>)
-                received.push(data.0);
+                // DoraArray owns an ArrayRef (Arc<dyn Array>); take it.
+                received.push(data.into_inner());
             }
             Event::Stop(_) | Event::InputClosed { .. } => break,
             _ => {}

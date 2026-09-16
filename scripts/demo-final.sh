@@ -47,21 +47,20 @@ step "Check Rust toolchain..."
 cargo --version
 rustc --version
 
-step "Check dora source..."
-if [ ! -f dora/binaries/cli/Cargo.toml ]; then
-    echo "dora source not found — cloning..."
-    git clone https://github.com/dora-rs/dora.git dora
-    git -C dora checkout 1fba7214b79d8488229f6cc2027b9760dec4d6df
-    ok "dora cloned and checked out at 1fba721"
+step "Check dora CLI..."
+DORA_EXPECTED_VERSION="1.0.1"
+if ! command -v dora > /dev/null 2>&1; then
+    echo "dora CLI not found — installing ${DORA_EXPECTED_VERSION} from crates.io..."
+    cargo install dora-cli --locked --version "$DORA_EXPECTED_VERSION"
+    ok "dora-cli ${DORA_EXPECTED_VERSION} installed"
 else
-    ok "dora source found"
-    PIN=$(git -C dora rev-parse --short=7 HEAD 2>/dev/null || true)
-    if [ "$PIN" != "1fba721" ]; then
-        warn "dora checkout is at $PIN, expected pinned commit 1fba721 (flume→tokio mpsc, arrow 59)"
-        warn "Demo behavior is not guaranteed on a different dora commit."
-        warn "Re-clone, or checkout the pin: git -C dora checkout 1fba7214b79d8488229f6cc2027b9760dec4d6df"
+    FOUND=$(dora --version 2>/dev/null | awk '{print $NF}')
+    if [ "$FOUND" != "$DORA_EXPECTED_VERSION" ]; then
+        warn "dora CLI is $FOUND, expected $DORA_EXPECTED_VERSION (the version dora-node-api resolves to)"
+        warn "Demo behavior is not guaranteed on a different dora version."
+        warn "Install the match: cargo install dora-cli --locked --version $DORA_EXPECTED_VERSION"
     else
-        ok "dora checkout verified at pinned commit 1fba721"
+        ok "dora CLI verified at $DORA_EXPECTED_VERSION"
     fi
 fi
 
@@ -200,4 +199,4 @@ echo "  • Full suite: 116 tests green (85 unit + 5 e2e + 4 record + 13 replay 
 echo ""
 echo -e "${CYAN}Repo:${NC} https://github.com/SunSunSun689/gsoc2026-dora-test-utils"
 echo -e "${CYAN}Branch:${NC} week11"
-echo -e "${CYAN}DORA dep:${NC} 1fba721 (flume→tokio mpsc, arrow 59)"
+echo -e "${CYAN}DORA dep:${NC} dora-node-api 1.0.1 (features = [\"arrow-v59\"])"

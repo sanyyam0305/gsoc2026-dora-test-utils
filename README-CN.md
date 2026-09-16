@@ -1,6 +1,6 @@
 # dora-test-utils
 
-> **DORA 版本**：基于 `dora-rs/dora` 的 commit **`1fba721`**（2026-08-04，`TestingOutput::ToChannel` 从 flume 迁移到 tokio mpsc 的版本；arrow 59）。`dora-node-api` 通过 git 依赖固定在该 commit。若使用其他 dora 版本，请先升级到 `1fba721` 或更新依赖。
+> **DORA 版本**：基于已发布的 **dora 1.0.1**（`dora-node-api = { version = "1.0.1", features = ["arrow-v59"] }`，arrow 59）。`arrow-v59` feature 是必需的：它提供 `DoraArray` 的访问方法以及 Arrow 59 数组的 `IntoArrow` 实现。请安装匹配的 `dora-cli`（`cargo install dora-cli --locked --version 1.0.1`），避免 CLI 与库 API 不一致。
 >
 > 中文版文档。English version: [README.md](README.md)
 
@@ -87,7 +87,7 @@ ReplaySession::load("baseline.json")?
 | 单元测试 | `cargo run --example harness_demo` | GEN72 关节限位监测：Part A 直测逻辑（含 J4/J6 不对称限位的边界用例）+ Part B 经 harness 跑事件循环 + **Part C 故意造一个 bug 并展示测试如何抓住它** |
 | 集成测试 | `bash scripts/demo-integration.sh` | 四条真实流水线：七轴配置回传（echo）、关节位置 + 速度双路（multi-echo）、末端防撞急停（distance-guard）、**配错的 distance-guard（安全距离设太低，被质检员抓出 match:false）** |
 | 回归测试 | `cargo run --example demo_replay` | 轨迹插值节点录制基线（140 个轨迹值）→ 插值分辨率 10→5 步（真实运动控制回归）→ 检测 67 处差异 |
-| **一键总览** | `bash scripts/demo-final.sh` | 三层连放 + 完整测试套件；自动 clone dora 到 pin 住的 commit `1fba721` |
+| **一键总览** | `bash scripts/demo-final.sh` | 三层连放 + 完整测试套件；自动安装匹配的 `dora-cli` |
 
 另外 `demo/rust-dataflow.yml` 保留了工具对 DORA 官方 rust-dataflow example 零修改用法的参考示例。
 

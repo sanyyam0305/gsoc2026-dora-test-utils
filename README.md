@@ -1,6 +1,6 @@
 # dora-test-utils
 
-> **DORA version**: built against `dora-rs/dora` commit **`1fba721`** (2026-08-04 — the commit that migrated `TestingOutput::ToChannel` from flume to tokio mpsc; arrow 59). `dora-node-api` is pinned to that commit via a git dependency. When using a different dora version, upgrade to `1fba721` or update the dependency first.
+> **DORA version**: built against the released **dora 1.0.1** (`dora-node-api = { version = "1.0.1", features = ["arrow-v59"] }`, arrow 59). The `arrow-v59` feature is required: it exposes the `DoraArray` accessors and the `IntoArrow` impls for Arrow 59 arrays. Use a matching `dora-cli` (`cargo install dora-cli --locked --version 1.0.1`) so the CLI and the library API cannot drift apart.
 >
 > 中文版文档: [README-CN.md](README-CN.md)
 
@@ -87,7 +87,7 @@ All demos share one theme — a **Realman GEN72 7-axis robot arm** — and each 
 | Unit testing | `cargo run --example harness_demo` | GEN72 joint-limit monitor: Part A asserts the logic directly (boundary cases incl. the asymmetric J4/J6 limits) + Part B drives the event loop through the harness + **Part C plants a deliberate bug and shows the test catching it** |
 | Integration testing | `bash scripts/demo-integration.sh` | Four real pipelines: 7-joint configuration relay (echo), joint positions + velocities on two outputs (multi-echo), end-effector proximity stop (distance-guard), and a **misconfigured distance-guard (safety distance set too low — caught as match:false)** |
 | Regression testing | `cargo run --example demo_replay` | Trajectory-interpolation node records a baseline (140 trajectory values) → interpolation resolution changed 10→5 steps (a real motion-control regression) → 67 differences detected |
-| **All in one** | `bash scripts/demo-final.sh` | All three layers + the full test suite; clones dora at the pinned commit `1fba721` automatically |
+| **All in one** | `bash scripts/demo-final.sh` | All three layers + the full test suite; installs the matching `dora-cli` automatically |
 
 `demo/rust-dataflow.yml` additionally keeps a reference example of the tool applied to DORA's official rust-dataflow example with zero modifications.
 
@@ -129,7 +129,7 @@ docs/              # design docs, progress log
 
 ## CI
 
-`.github/workflows/ci.yml` runs five jobs: `check`, `test` (lib + e2e + smoke), `clippy`, `fmt`, and `integration-test` (clones dora at the pinned commit, builds the CLI, runs integration + record/replay e2e serially, 30-minute cap).
+`.github/workflows/ci.yml` runs five jobs: `check`, `test` (lib + e2e + smoke), `clippy`, `fmt`, and `integration-test` (installs `dora-cli` from crates.io, runs integration + record/replay e2e serially, 30-minute cap).
 
 ## Progress
 

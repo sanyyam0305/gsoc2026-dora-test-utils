@@ -12,7 +12,7 @@ fn main() -> eyre::Result<()> {
     while let Some(event) = events.recv() {
         match event {
             Event::Input { id, data, .. } => {
-                node.send_output(id, MetadataParameters::default(), data.0)
+                node.send_output(id, MetadataParameters::default(), data)
                     .map_err(|e| eyre::eyre!("echo-node: send_output failed: {e}"))?;
             }
             Event::Stop(_) => break,

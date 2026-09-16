@@ -20,6 +20,28 @@ fn dora_available() -> bool {
         .unwrap_or(false)
 }
 
+/// Require the `dora` CLI before running an e2e test.
+///
+/// In CI (`CI=true`), panics if unavailable — a missing CLI means the
+/// workflow is broken, and skipping would report a green run that tested
+/// nothing. Locally, warns and returns `false` so the caller can skip.
+fn require_dora() -> bool {
+    if dora_available() {
+        return true;
+    }
+    if std::env::var("CI").is_ok() {
+        panic!(
+            "dora CLI not found on PATH — required by e2e tests in CI.\n\
+             The CI workflow should install dora before running these tests."
+        );
+    }
+    eprintln!(
+        "⚠️  SKIP: dora CLI not found on PATH — e2e tests will be skipped.\n\
+         Install dora or run `cargo test --lib` for unit tests only."
+    );
+    false
+}
+
 fn find_dora_binary() -> PathBuf {
     for profile in &["debug", "release"] {
         let local = Path::new("dora/target").join(profile).join("dora");
@@ -122,8 +144,7 @@ fn generate_record_echo_yaml(tmp_dir: &std::path::Path) -> (PathBuf, PathBuf) {
 #[test]
 #[serial]
 fn record_echo_pipeline() {
-    if !dora_available() {
-        eprintln!("SKIP: dora CLI not found on PATH");
+    if !require_dora() {
         return;
     }
     build_binaries();
@@ -162,8 +183,7 @@ fn record_echo_pipeline() {
 #[test]
 #[serial]
 fn record_save_and_load_roundtrip() {
-    if !dora_available() {
-        eprintln!("SKIP: dora CLI not found on PATH");
+    if !require_dora() {
         return;
     }
     build_binaries();

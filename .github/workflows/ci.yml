@@ -41,7 +41,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --all-targets -- -D warnings
 
   fmt:
     name: cargo fmt
@@ -64,24 +64,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       # DORA CLI is needed for `dora run` in integration + record tests.
-      # dora-node-api is pulled as a git dep (Cargo.toml) — no patch needed.
-      - run: git clone https://github.com/dora-rs/dora.git dora && git -C dora checkout 1fba7214b79d8488229f6cc2027b9760dec4d6df
-        working-directory: ${{ github.workspace }}
-
-      # Cache dora build artifacts — keyed on dora source hash so the
-      # cache hits every run after the first (commit is locked).
-      - uses: actions/cache@v4
-        with:
-          path: dora/target
-          key: dora-target-${{ runner.os }}-${{ hashFiles('dora/**/*.rs', 'dora/**/Cargo.toml') }}
-
-      # Build the dora CLI (binary lives in binaries/cli, not workspace root).
-      # PYO3_NO_PYTHON=1 skips Python version detection — the CLI's default
-      # features don't include Python support, and CI doesn't need it.
-      - run: PYO3_NO_PYTHON=1 cargo build --bin dora --manifest-path dora/binaries/cli/Cargo.toml
+      # Installed from crates.io at the same version dora-node-api resolves
+      # to, so the CLI and the library API cannot drift apart. This replaces
+      # cloning dora and building the CLI from source at a pinned rev.
+      - run: cargo install dora-cli --locked --version 1.0.1
 
       # Build our test binaries first (integration test expects them pre-built).
-      - run: cargo build --bin test-source --bin test-sink --bin echo-node --bin classifier-node
+      - run: cargo build --bins
 
       # Run integration tests serially (dora daemon binds port 6013).
       # No per-step timeout here: the job-level timeout-minutes above is the

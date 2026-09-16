@@ -19,7 +19,7 @@ fn main() -> eyre::Result<()> {
         match event {
             Event::Input { id: _id, data, .. } => {
                 // Downcast to Int64Array
-                let Some(array) = data.0.as_any().downcast_ref::<Int64Array>() else {
+                let Some(array) = data.as_array().as_any().downcast_ref::<Int64Array>() else {
                     eprintln!("classifier: expected Int64 input");
                     continue;
                 };

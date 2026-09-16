@@ -18,6 +18,28 @@ fn dora_available() -> bool {
         .unwrap_or(false)
 }
 
+/// Require the `dora` CLI before running an e2e test.
+///
+/// In CI (`CI=true`), panics if unavailable — a missing CLI means the
+/// workflow is broken, and skipping would report a green run that tested
+/// nothing. Locally, warns and returns `false` so the caller can skip.
+fn require_dora() -> bool {
+    if dora_available() {
+        return true;
+    }
+    if std::env::var("CI").is_ok() {
+        panic!(
+            "dora CLI not found on PATH — required by e2e tests in CI.\n\
+             The CI workflow should install dora before running these tests."
+        );
+    }
+    eprintln!(
+        "⚠️  SKIP: dora CLI not found on PATH — e2e tests will be skipped.\n\
+         Install dora or run `cargo test --lib` for unit tests only."
+    );
+    false
+}
+
 fn find_dora_binary() -> PathBuf {
     for profile in &["debug", "release"] {
         let local = Path::new("dora/target").join(profile).join("dora");
@@ -178,8 +200,7 @@ fn generate_multi_echo_yaml(tmp: &Path) -> (PathBuf, PathBuf, PathBuf) {
 #[test]
 #[serial]
 fn replay_clean_no_regression() {
-    if !dora_available() {
-        eprintln!("SKIP");
+    if !require_dora() {
         return;
     }
     build_binaries();
@@ -212,8 +233,7 @@ fn replay_clean_no_regression() {
 #[test]
 #[serial]
 fn replay_ignore_paths_count_filtering() {
-    if !dora_available() {
-        eprintln!("SKIP");
+    if !require_dora() {
         return;
     }
     build_binaries();
@@ -248,8 +268,7 @@ fn replay_ignore_paths_count_filtering() {
 #[test]
 #[serial]
 fn replay_regression_detected() {
-    if !dora_available() {
-        eprintln!("SKIP");
+    if !require_dora() {
         return;
     }
     build_binaries();
@@ -298,8 +317,7 @@ fn replay_regression_multi_echo_topology() {
     // pipeline: two outputs, two echo nodes, two record-mode sinks. Verifies
     // the Record/Replay tool is dataflow-agnostic — a mutation in the shared
     // source data is detected independently in BOTH sinks.
-    if !dora_available() {
-        eprintln!("SKIP");
+    if !require_dora() {
         return;
     }
     build_binaries();
@@ -414,8 +432,7 @@ fn replay_load_invalid_json() {
 #[test]
 #[serial]
 fn replay_override_dataflow() {
-    if !dora_available() {
-        eprintln!("SKIP");
+    if !require_dora() {
         return;
     }
     build_binaries();

@@ -37,10 +37,11 @@ use std::collections::HashMap;
 
 use dora_node_api::{
     integration_testing::{
-        integration_testing_format::TimedIncomingEvent, unbounded_channel, IntegrationTestInput,
-        TestingInput, TestingOptions, TestingOutput, UnboundedReceiver, UnboundedSender,
+        drain_outputs, integration_testing_format::TimedIncomingEvent, output_channel,
+        IntegrationTestInput, OutputReceiver, OutputSender, TestingInput, TestingOptions,
+        TestingOutput,
     },
-    DoraNode, Event, EventStream, NodeError,
+    DoraArray, DoraNode, Event, EventStream, NodeError,
 };
 
 /// The main unit-test harness for a single DORA node.
@@ -79,9 +80,9 @@ pub struct NodeHarness {
     pending_events: Vec<TimedIncomingEvent>,
     /// Output channel sender.  Created eagerly in [`new`](Self::new) so
     /// `recv_output` works before init; consumed by `ensure_init`.
-    output_tx: Option<UnboundedSender<serde_json::Map<String, serde_json::Value>>>,
+    output_tx: Option<OutputSender>,
     /// Receiver for outputs captured via [`TestingOutput::ToChannel`].
-    output_rx: UnboundedReceiver<serde_json::Map<String, serde_json::Value>>,
+    output_rx: OutputReceiver,
     /// Buffered outputs indexed by output ID (the `"id"` field in each
     /// JSON output map).
     output_buffers: HashMap<String, Vec<serde_json::Map<String, serde_json::Value>>>,
@@ -104,12 +105,12 @@ impl NodeHarness {
     /// # Errors
     ///
     /// Returns a [`NodeError`] if the output channel cannot be created.
-    /// (In practice this never fails for an unbounded tokio mpsc channel.)
+    /// (In practice this never fails: the channel is unbounded.)
     pub fn new() -> Result<Self, NodeError> {
-        // Unbounded tokio mpsc channel for output capture.
-        // Uses the re-export from dora_node_api::integration_testing, matching
-        // the upstream TestingOutput::ToChannel(UnboundedSender<OutputJson>).
-        let (output_tx, output_rx) = unbounded_channel();
+        // Output capture channel, built by dora's own constructor. The halves
+        // are opaque newtypes rather than tokio types, so the channel choice
+        // stays out of dora's frozen surface (dora-rs/dora#3239).
+        let (output_tx, output_rx) = output_channel();
 
         Ok(Self {
             pending_events: Vec::new(),
@@ -206,7 +207,7 @@ impl NodeHarness {
     pub fn send_output(
         &mut self,
         output_id: &str,
-        data: impl arrow::array::Array,
+        data: impl arrow::array::Array + 'static,
     ) -> Result<(), NodeError> {
         let data_id = output_id
             .parse()
@@ -216,7 +217,7 @@ impl NodeHarness {
         self.node
             .as_mut()
             .expect("NodeHarness: node not initialized")
-            .send_output(data_id, Default::default(), data)
+            .send_output(data_id, Default::default(), DoraArray::from_array(data))
     }
 
     /// Drive the node to process **one** event from the [`EventStream`].
@@ -370,10 +371,10 @@ impl NodeHarness {
         self.event_stream = Some(event_stream);
     }
 
-    /// Collect all pending outputs from the tokio mpsc channel into
+    /// Collect all pending outputs from the output channel into
     /// `output_buffers`, indexed by the `"id"` field in each JSON map.
     fn collect_pending_outputs(&mut self) {
-        while let Ok(output) = self.output_rx.try_recv() {
+        for output in drain_outputs(&mut self.output_rx) {
             if let Some(id) = output.get("id").and_then(|v| v.as_str()) {
                 self.output_buffers
                     .entry(id.to_string())
@@ -410,7 +411,7 @@ mod tests {
         match event {
             dora_node_api::Event::Input { id, data, .. } => {
                 assert_eq!(id.to_string(), "test_id");
-                assert!(!data.0.is_empty(), "data should be non-empty");
+                assert!(!data.as_array().is_empty(), "data should be non-empty");
             }
             other => panic!("expected Input event, got {other:?}"),
         }
@@ -429,7 +430,7 @@ mod tests {
         match event {
             dora_node_api::Event::Input { id, data, .. } => {
                 assert_eq!(id.to_string(), "arrow_in");
-                assert!(!data.0.is_empty(), "data should be non-empty");
+                assert!(!data.as_array().is_empty(), "data should be non-empty");
             }
             other => panic!("expected Input event, got {other:?}"),
         }

@@ -28,7 +28,10 @@ fn e2e_receive_input_and_stop() {
         dora_node_api::Event::Input { id, data, .. } => {
             assert_eq!(id.to_string(), "numbers");
             // Data should be non-empty (3-element Int32 array)
-            assert!(!data.0.is_empty(), "input data should be non-empty");
+            assert!(
+                !data.as_array().is_empty(),
+                "input data should be non-empty"
+            );
         }
         other => panic!("expected Input event, got {other:?}"),
     }
@@ -187,8 +190,8 @@ fn e2e_send_data_arrow_input() {
             // Verify content: data arrived (non-empty). The Arrow→JSON→Arrow
             // round-trip may change the concrete Arrow type (e.g. Int32→Struct),
             // but the values and element count must be preserved.
-            let len = data.0.len();
-            assert!(!data.0.is_empty(), "data should be non-empty");
+            let len = data.as_array().len();
+            assert!(!data.as_array().is_empty(), "data should be non-empty");
             assert_eq!(len, 3, "expected 3 elements after round-trip");
             // Check that values are recognizable in the debug output.
             let debug_str = format!("{data:?}");

@@ -57,7 +57,7 @@ fn main() -> eyre::Result<()> {
     while let Some(event) = events.recv() {
         match event {
             Event::Input { data, .. } => {
-                let Some(array) = data.0.as_any().downcast_ref::<Float64Array>() else {
+                let Some(array) = data.as_array().as_any().downcast_ref::<Float64Array>() else {
                     eprintln!("trajectory-node: expected Float64 input");
                     continue;
                 };

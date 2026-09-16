@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Testing utility library for the DORA framework — unit testing and integration testing support"
 license = "Apache-2.0"
-repository = "https://github.com/dora-rs/dora-test-utils"
+repository = "https://github.com/dora-rs/gsoc2026-dora-test-utils"
 authors = ["SunSunSun689"]
 
 [dependencies]
@@ -19,19 +19,22 @@ serde = { version = "1", features = ["derive"] }
 
 # DORA node API — the primary integration surface.
 #
-# Pinned to commit 1fba721 (2026-08-04) which includes the
-# TestingOutput::ToChannel flume→tokio::sync::mpsc migration.
-# See docs/PROGRESS.md Week 11 for details.
-dora-node-api = { git = "https://github.com/dora-rs/dora.git", rev = "1fba7214b79d8488229f6cc2027b9760dec4d6df" }
+# A released version, not a git rev: the crate is meant to be consumable
+# alongside a normal dora install, and a git dependency also makes it
+# unpublishable. The `arrow-v59` feature exposes the `DoraArray` accessors
+# and the `IntoArrow` impls for Arrow 59 arrays, both of which this crate
+# needs since dora-rs/dora#3213 removed Arrow from the frozen public API.
+dora-node-api = { version = "1.0.1", features = ["arrow-v59"] }
 
-# Arrow: must match the version used by the pinned DORA commit.
-# 1fba721 uses arrow 59; do NOT bump unless the DORA pin changes.
+# Arrow: must match the major that dora links internally, so arrays cross
+# the boundary without a conversion hop. dora 1.0.1 uses arrow 59.1.
 arrow = "59"
 arrow-json = "59"
 
-# Tokio: async runtime used by DORA and our harness.
-# The unbounded_channel re-export from dora_node_api::integration_testing
-# obsoletes flume; no longer a dependency.
+# Tokio: async runtime used by DORA and our harness. The testing output
+# channel is no longer a tokio type in dora's public API (dora-rs/dora#3239
+# replaced the re-exports with opaque newtypes), so this is only needed for
+# the runtime itself.
 tokio = { version = "1", features = ["sync", "macros", "rt"] }
 
 # serde_json: DORA outputs are serialized as JSON maps in integration

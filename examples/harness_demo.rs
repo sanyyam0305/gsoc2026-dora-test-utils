@@ -180,7 +180,7 @@ fn main() {
             Some(Event::Input { id, data, .. }) => {
                 assert_eq!(id.as_str(), "joints", "unexpected input id");
                 // The node's event handler — calling THE SAME logic function.
-                let angles = read_angles(&data.0);
+                let angles = read_angles(data.as_array());
                 match node_logic::first_joint_violation(&angles) {
                     Some(joint) => {
                         println!("    joint {joint} out of range → emergency stop");
